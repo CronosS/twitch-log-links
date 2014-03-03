@@ -1,13 +1,14 @@
 /*!
- * twitch-log-links v1.5.2
+ * twitch-log-links v1.5.3
  * https://github.com/CronosS/twitch-log-links/
  *
  * This is a companion script for twitch-chat-filter
- * (due to compatibility issue, chat_filter should be executed first)
+ * (due to compatibility issue, chat-filter should be executed first)
  * https://github.com/jpgohlke/twitch-chat-filter/
  *
  * Date: 2014-03-03
  * Updated for new Twitch chat
+ * Updated spam filter
  */
 
 (function (Chat) {
@@ -21,7 +22,9 @@
         NB_VERRY_HIGH_OCCURENCE = 100,
         BLOCKED_WORDS = [
             'free helix',
-            'strawpoll.me/1246655'
+            '1246655',
+			'1251114',
+			'1251238'
         ],
         SAVE_URL_FROM = [{
             name: 'strawpoll',
