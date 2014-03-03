@@ -1,17 +1,16 @@
 /*!
- * twitch-log-links v1.5.3
+ * twitch-log-links v1.4
  * https://github.com/CronosS/twitch-log-links/
  *
  * This is a companion script for twitch-chat-filter
  * (due to compatibility issue, chat-filter should be executed first)
  * https://github.com/jpgohlke/twitch-chat-filter/
  *
- * Date: 2014-03-03
- * Updated for new Twitch chat
- * Updated spam filter
+ * Date: 2014-03-01
+ * For old Twitch chat
  */
 
-(function (Chat) {
+(function (CurrentChat) {
     'use strict';
 
     // --- Configuration ---
@@ -19,12 +18,8 @@
     var NB_LINKS_MAX = 50,
         NB_MEDIUM_OCCURENCE = 25,
         NB_HIGH_OCCURENCE = 50,
-        NB_VERRY_HIGH_OCCURENCE = 100,
         BLOCKED_WORDS = [
-            'free helix',
-            '1246655',
-			'1251114',
-			'1251238'
+            'free helix'
         ],
         SAVE_URL_FROM = [{
             name: 'strawpoll',
@@ -87,7 +82,7 @@
         return url;
     }
 
-    function buttonPlanClicked() {
+    function aPlanClicked() {
         panelPlan.style.display = (panelPlan.style.display !== 'none' ? 'none' : 'block');
         fixChatHeight();
     }
@@ -101,18 +96,23 @@
     }
 
     function fixChatHeight() {
-        panelChat.style.bottom = panelPlan.clientHeight + 'px';
+        var tppFilterButton = document.querySelector('#chat_filter_dropmenu');
+        if (tppFilterButton) {
+            tppFilterButton.style.bottom = controlPanel.offsetHeight - 65 + 'px';
+        }
+
+        document.querySelector('#twitch_chat > div.js-chat-scroll').style.bottom = controlPanel.offsetHeight + 'px';
     }
 
     // --- UI ---
 
         // Get existing elements for further manipulation.
-    var panelChat = document.getElementById('chat'),
-        controlButtons = document.querySelector('.chat-option-buttons'),
-        chatSpeak = document.querySelector('.send-chat-button'),
+    var controlPanel = document.getElementById('controls'),
+        controlButtons = document.getElementById('control_buttons'),
+        chatSpeak = document.getElementById('chat_speak'),
 
         // Create our own elements to insert.
-        buttonPlan = document.createElement('button'),
+        aPlan = document.createElement('a'),
         panelPlan = document.createElement('div'),
         containerLinks = document.createElement('ol'),
 
@@ -120,44 +120,41 @@
         cssPlan = [],
         cssLinks = [],
         extraCss =
-            '#containerLinks li{background-color: #e3e3e3; margin-left: 20px; border-left: 1px solid rgba(0, 0, 0, 0.25); list-style-position: outside;}' +
-            '#containerLinks a{text-indent: 5px; max-width: 200px; text-overflow: ellipsis; display: inline-block; overflow: hidden; vertical-align: middle; white-space: nowrap;}' +
-            '#containerLinks span{background: #ddd; display: inline-block; line-height: 15px; font-family: consolas, "Lucida Console", monospace; padding: 0 2px 0 5px;}' +
+            '#containerLinks a{max-width: 200px; text-overflow: ellipsis; display: inline-block; overflow: hidden; vertical-align: middle; white-space: nowrap;}' +
+            '#containerLinks span{background: #DDDDDD; color: #797979; display: inline-block; line-height: 15px; font-size: 11px; font-family: consolas, "Lucida Console", monospace; padding: 0 2px 0 5px;}' +
             '#containerLinks:empty:after{content: "There\'s currently no saved link."; font-style: italic; color: #999}';
 
     SAVE_URL_FROM.forEach(function (savedUrl) {
-        cssLinks.push('#containerLinks.hide_' + savedUrl.name + ' .tppLink_' + savedUrl.name);
+        cssLinks.push('#containerLinks.hide_' + savedUrl.name + ' .tppLink' + savedUrl.name);
     });
 
     extraCss += cssLinks.join(', ') + '{display: none !important;}';
     addStyle(extraCss);
 
     // Create the toggle panel button.
-    buttonPlan.className = 'button-simple light tooltip';
-    buttonPlan.setAttribute('original-title', 'Links / Plans');
-    buttonPlan.style.cssText = 'margin-left: 2px; background-image: url("http://i.imgur.com/SWB6nFF.png");';
-    chatSpeak.style.left = '120px';
-    controlButtons.insertBefore(buttonPlan, controlButtons.lastChild.nextSibling);
-    buttonPlan.addEventListener('click', buttonPlanClicked);
+    aPlan.className = 'dropdown_static';
+    aPlan.innerHTML = '<span>Plan</span>';
+    chatSpeak.style.width = '80px';
+    controlButtons.insertBefore(aPlan, chatSpeak);
+    aPlan.addEventListener('click', aPlanClicked);
 
     // Create the panel.
     SAVE_URL_FROM.forEach(function (savedUrl) {
         var checked = savedUrl.checked ? ' checked' : '';
-        inputPlan += '<span style="margin-right: 10px;"><input data-source="' + savedUrl.name + '" type="checkbox" style="vertical-align: text-top;"' + checked + '> ' + savedUrl.name + '</span>';
+        inputPlan += '<span style="margin-right: 10px;"><input data-source="' + savedUrl.name + '" type="checkbox"' + checked + '> ' + savedUrl.name + '</span>';
         if (!savedUrl.checked) {
             cssPlan.push('hide_' + savedUrl.name);
         }
     });
 
-    panelPlan.style.cssText = 'position: absolute; bottom: 0px; width: 100%;';
-    panelPlan.innerHTML = '<div style="color: #606161; background: #c9c9c9; padding: 10px; font-size: 10px; text-transform: uppercase; font-weight: bold;">' + inputPlan + '</div>';
-    panelChat.parentNode.appendChild(panelPlan);
+    panelPlan.innerHTML = '<div style="border-bottom: 1px solid rgba(0,0,0,0.25); text-transform: capitalize;">' + inputPlan + '</div>';
+    controlPanel.appendChild(panelPlan);
     panelPlan.addEventListener('click', inputSourceClicked, false);
 
     // Create the links zone.
     containerLinks.id = 'containerLinks';
     containerLinks.reversed = true;
-    containerLinks.style.cssText = 'max-height: 150px; overflow: hidden; overflow-y: scroll; list-style-type : decimal-leading-zero; padding-left: 10px; background-color: #dadada; color: #797979; font-size: 11px;';
+    containerLinks.style.cssText = 'max-height: 150px; overflow: hidden; overflow-y: scroll; list-style-type : decimal-leading-zero;';
     containerLinks.className = cssPlan.join(' ');
     panelPlan.appendChild(containerLinks);
 
@@ -167,10 +164,10 @@
     // --- Main ---
 
     var links = {},
-        originalAddMessage = Chat.addMessage;
+        original_insert_chat_line = CurrentChat.insert_chat_line;
 
-     Chat.addMessage = function (info) {
-        originalAddMessage.apply(this, arguments);
+    CurrentChat.insert_chat_line = function (info) {
+        original_insert_chat_line.apply(this, arguments);
 
         // Check in each message if there's a link to keep.
         var messageUrl = getMessageUrl(info.message);
@@ -183,32 +180,33 @@
             // If the link is new, we add it to the list.
             if (typeof links[baseUrl] === 'undefined') {
                 var link = document.createElement('li');
-                link.className = 'tppLink_' + source;
-                link.innerHTML = '<a href="http://' + url + '" data-base-url="' + baseUrl + '" target="_blank">' + url + '</a><span></span>';
+                link.className = 'tppLink' + source;
+                link.innerHTML = '<a href="http://' + url + '" target="_blank">' + url + '</a><span></span>';
 
                 links[baseUrl] = {
                     nbOcc: 1,
-                    style: '#797979',
                     link: link
                 };
 
                 // We keep only a reasonnable number of links.
-                if (containerLinks.childElementCount === NB_LINKS_MAX) {
-                    delete links[containerLinks.lastChild.querySelector('a').dataset.baseUrl];
+                if (containerLinks.childElementCount >= NB_LINKS_MAX) {
+                    delete links[getBaseUrl(containerLinks.lastChild.querySelector('a').href)];
                     containerLinks.removeChild(containerLinks.lastChild);
                 }
             }
             // Else, we just increment its number of occurences (and actualize the displayed url).
             else {
+                var specialStyle = '';
                 links[baseUrl].nbOcc++;
 
-                switch (links[baseUrl].nbOcc){
-                    case NB_MEDIUM_OCCURENCE: links[baseUrl].style = '#2BA6EB'; break;
-                    case NB_HIGH_OCCURENCE: links[baseUrl].style = '#FF386F'; break;
-                    case NB_VERRY_HIGH_OCCURENCE: links[baseUrl].style = '#FFF; background-color: #50C700'; break;
+                if(links[baseUrl].nbOcc >= NB_MEDIUM_OCCURENCE) {
+                    specialStyle = ' style="color: #2BA6EB;"';
+                }
+                if (links[baseUrl].nbOcc >= NB_HIGH_OCCURENCE) {
+                    specialStyle = ' style="color: #FF386F;"';
                 }
 
-                links[baseUrl].link.innerHTML = '<a href="http://' + url + '" data-base-url="' + baseUrl + '" target="_blank">' + url + '</a> <span style="color: ' + links[baseUrl].style + '">' + links[baseUrl].nbOcc + '</span>';
+                links[baseUrl].link.innerHTML = '<a href="http://' + url + '" target="_blank">' + url + '</a> <span'+ specialStyle +'>' + links[baseUrl].nbOcc + '</span>';
             }
 
             // If the node already exists it is removed from current parent node, then added to new parent node.
@@ -221,4 +219,4 @@
             }
         }
     };
-}(window.App.Room.prototype));
+}(window.CurrentChat));
