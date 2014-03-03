@@ -1,6 +1,6 @@
 /*!
  * twitch-log-links v1.5.2
- * https://gist.github.com/CronosS/9208495/
+ * https://github.com/CronosS/twitch-log-links/
  *
  * This is a companion script for twitch-chat-filter
  * (due to compatibility issue, chat_filter should be executed first)
