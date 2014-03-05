@@ -1,14 +1,14 @@
 /*!
- * twitch-log-links v1.5.3
+ * twitch-log-links v1.6
+ * Only for new Twitch chat
  * https://github.com/CronosS/twitch-log-links/
  *
  * This is a companion script for twitch-chat-filter
  * (due to compatibility issue, chat-filter should be executed first)
  * https://github.com/jpgohlke/twitch-chat-filter/
  *
- * Date: 2014-03-03
- * Updated for new Twitch chat
- * Updated spam filter
+ * Date: 2014-03-05
+ * Resizable UI
  */
 
 (function (Chat) {
@@ -23,10 +23,11 @@
         BLOCKED_WORDS = [
             'free helix',
             '1246655',
-			'1251114',
-			'1251238'
+            '1251114',
+            '1251238'
         ],
-        SAVE_URL_FROM = [{
+        SAVE_URL_FROM = [
+        {
             name: 'strawpoll',
             checked: true
         }, {
@@ -35,7 +36,8 @@
         }, {
             name: 'reddit',
             checked: true
-        }];
+        }
+        ];
 
     // --- Helper functions ---
 
@@ -87,12 +89,18 @@
         return url;
     }
 
-    function buttonPlanClicked() {
-        panelPlan.style.display = (panelPlan.style.display !== 'none' ? 'none' : 'block');
+    function fixChatHeight() {
+        chatPanel.style.bottom = mainPanel.clientHeight + 'px';
+    }
+
+    // Event Handlers
+
+    function toggleButtonClicked() {
+        mainPanel.style.display = (mainPanel.style.display !== 'none' ? 'none' : 'block');
         fixChatHeight();
     }
 
-    function inputSourceClicked(e) {
+    function inputCheckboxesClicked(e) {
         var self = e.target;
         if (self && self.nodeName === 'INPUT') {
             containerLinks.classList.toggle('hide_' + self.dataset.source, !self.checked);
@@ -100,66 +108,98 @@
         }
     }
 
-    function fixChatHeight() {
-        panelChat.style.bottom = panelPlan.clientHeight + 'px';
+    function resizeHandleMoved(e){
+        var newHeight = document.documentElement.clientHeight - e.clientY;
+        e.preventDefault();
+        if(newHeight >= optionCheckboxes.clientHeight && e.clientY >= 161){
+            chatPanel.style.bottom = newHeight + 'px';
+            containerLinks.style.height = newHeight - optionCheckboxes.clientHeight + 'px';
+        }
+    }
+
+    function resizeHandleDown(){
+        if (containerLinks.style.maxHeight !== 'none') {
+            containerLinks.style.maxHeight = 'none';
+        }
+        
+        document.addEventListener('mouseup', resizeHandleUp);
+        document.addEventListener('mousemove', resizeHandleMoved);
+    }
+
+    function resizeHandleUp(){
+        document.removeEventListener('mousemove', resizeHandleMoved);
+        document.removeEventListener('mouseup', resizeHandleUp);
     }
 
     // --- UI ---
 
         // Get existing elements for further manipulation.
-    var panelChat = document.getElementById('chat'),
-        controlButtons = document.querySelector('.chat-option-buttons'),
-        chatSpeak = document.querySelector('.send-chat-button'),
+    var chatPanel = document.getElementById('chat'),
+        optionButtons = document.querySelector('.chat-option-buttons'),
+        chatButton = document.querySelector('.send-chat-button'),
 
         // Create our own elements to insert.
-        buttonPlan = document.createElement('button'),
-        panelPlan = document.createElement('div'),
+        toggleButton = document.createElement('button'),
+        mainPanel = document.createElement('div'),
+        optionCheckboxes = document.createElement('div'),
         containerLinks = document.createElement('ol'),
+        resizeHandle = document.createElement('div'),
 
-        inputPlan = '',
-        cssPlan = [],
+        inputCheckboxes = '',
+        cssOption = [],
         cssLinks = [],
         extraCss =
-            '#containerLinks li{background-color: #e3e3e3; margin-left: 20px; border-left: 1px solid rgba(0, 0, 0, 0.25); list-style-position: outside;}' +
-            '#containerLinks a{text-indent: 5px; max-width: 200px; text-overflow: ellipsis; display: inline-block; overflow: hidden; vertical-align: middle; white-space: nowrap;}' +
-            '#containerLinks span{background: #ddd; display: inline-block; line-height: 15px; font-family: consolas, "Lucida Console", monospace; padding: 0 2px 0 5px;}' +
-            '#containerLinks:empty:after{content: "There\'s currently no saved link."; font-style: italic; color: #999}';
+            '#tll-container-links li{background-color: #e3e3e3; margin-left: 20px; border-left: 1px solid rgba(0, 0, 0, 0.25); list-style-position: outside;}' +
+            '#tll-container-links a{text-indent: 5px; max-width: 200px; text-overflow: ellipsis; display: inline-block; overflow: hidden; vertical-align: middle; white-space: nowrap;}' +
+            '#tll-container-links span{background: #ddd; display: inline-block; line-height: 15px; font-family: consolas, "Lucida Console", monospace; padding: 0 2px 0 5px;}' +
+            '#tll-container-links:empty:after{content: "There\'s currently no saved link."; font-style: italic; color: #999}' +
+            '#tll-resize-handle{position: absolute; width: 100%; height: 5px; cursor: ns-resize;}';
 
     SAVE_URL_FROM.forEach(function (savedUrl) {
-        cssLinks.push('#containerLinks.hide_' + savedUrl.name + ' .tppLink_' + savedUrl.name);
+        var checked = savedUrl.checked ? ' checked' : '';
+
+        cssLinks.push('#tll-container-links.hide_' + savedUrl.name + ' .tll-link-' + savedUrl.name);
+        inputCheckboxes += '<span style="margin-right: 10px;"><input data-source="' + savedUrl.name + '" type="checkbox" style="vertical-align: text-top;"' + checked + '> ' + savedUrl.name + '</span>';
+
+        if (!savedUrl.checked) {
+            cssOption.push('hide_' + savedUrl.name);
+        }
     });
 
     extraCss += cssLinks.join(', ') + '{display: none !important;}';
     addStyle(extraCss);
 
     // Create the toggle panel button.
-    buttonPlan.className = 'button-simple light tooltip';
-    buttonPlan.setAttribute('original-title', 'Links / Plans');
-    buttonPlan.style.cssText = 'margin-left: 2px; background-image: url("http://i.imgur.com/SWB6nFF.png");';
-    chatSpeak.style.left = '120px';
-    controlButtons.insertBefore(buttonPlan, controlButtons.lastChild.nextSibling);
-    buttonPlan.addEventListener('click', buttonPlanClicked);
+    toggleButton.className = 'button-simple light tooltip';
+    toggleButton.setAttribute('original-title', 'Links / Plans');
+    toggleButton.style.cssText = 'margin-left: 2px; background-image: url("http://i.imgur.com/SWB6nFF.png");';
+    chatButton.style.left = '120px';
+    optionButtons.insertBefore(toggleButton, optionButtons.lastChild.nextSibling);
+    toggleButton.addEventListener('click', toggleButtonClicked);
 
-    // Create the panel.
-    SAVE_URL_FROM.forEach(function (savedUrl) {
-        var checked = savedUrl.checked ? ' checked' : '';
-        inputPlan += '<span style="margin-right: 10px;"><input data-source="' + savedUrl.name + '" type="checkbox" style="vertical-align: text-top;"' + checked + '> ' + savedUrl.name + '</span>';
-        if (!savedUrl.checked) {
-            cssPlan.push('hide_' + savedUrl.name);
-        }
-    });
+    // Create the resize handle.
+    resizeHandle.id = 'tll-resize-handle';
+    resizeHandle.addEventListener('mousedown', resizeHandleDown);
 
-    panelPlan.style.cssText = 'position: absolute; bottom: 0px; width: 100%;';
-    panelPlan.innerHTML = '<div style="color: #606161; background: #c9c9c9; padding: 10px; font-size: 10px; text-transform: uppercase; font-weight: bold;">' + inputPlan + '</div>';
-    panelChat.parentNode.appendChild(panelPlan);
-    panelPlan.addEventListener('click', inputSourceClicked, false);
+    // Create the option panel.
+    optionCheckboxes.id = 'tll-options-checkboxes';
+    optionCheckboxes.style.cssText = 'color: #606161; background: #c9c9c9; padding: 10px; font-size: 10px; text-transform: uppercase; font-weight: bold;'
+    optionCheckboxes.innerHTML = inputCheckboxes;
 
     // Create the links zone.
-    containerLinks.id = 'containerLinks';
+    containerLinks.id = 'tll-container-links';
     containerLinks.reversed = true;
     containerLinks.style.cssText = 'max-height: 150px; overflow: hidden; overflow-y: scroll; list-style-type : decimal-leading-zero; padding-left: 10px; background-color: #dadada; color: #797979; font-size: 11px;';
-    containerLinks.className = cssPlan.join(' ');
-    panelPlan.appendChild(containerLinks);
+    containerLinks.className = cssOption.join(' ');
+
+    // Create the main panel.
+    mainPanel.id = 'tll-main-panel';
+    mainPanel.style.cssText = 'position: absolute; bottom: 0px; width: 100%;';
+    mainPanel.appendChild(resizeHandle);
+    mainPanel.appendChild(optionCheckboxes);
+    mainPanel.appendChild(containerLinks);
+    chatPanel.parentNode.appendChild(mainPanel);
+    mainPanel.addEventListener('click', inputCheckboxesClicked, false);
 
     // Fix the height of the chat.
     fixChatHeight();
@@ -183,7 +223,7 @@
             // If the link is new, we add it to the list.
             if (typeof links[baseUrl] === 'undefined') {
                 var link = document.createElement('li');
-                link.className = 'tppLink_' + source;
+                link.className = 'tll-link-' + source;
                 link.innerHTML = '<a href="http://' + url + '" data-base-url="' + baseUrl + '" target="_blank">' + url + '</a><span></span>';
 
                 links[baseUrl] = {
