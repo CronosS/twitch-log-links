@@ -1,5 +1,5 @@
 /*!
- * twitch-log-links v1.6
+ * twitch-log-links v1.7
  * Only for new Twitch chat
  * https://github.com/CronosS/twitch-log-links/
  *
@@ -7,37 +7,44 @@
  * (due to compatibility issue, chat-filter should be executed first)
  * https://github.com/jpgohlke/twitch-chat-filter/
  *
- * Date: 2014-03-05
- * Resizable UI
+ * Date: 2014-03-09
+ * Configuration saved upon reloading
  */
+
+/* jshint browser: true */
 
 (function (Chat) {
     'use strict';
 
     // --- Configuration ---
 
-    var NB_LINKS_MAX = 50,
-        NB_MEDIUM_OCCURENCE = 25,
-        NB_HIGH_OCCURENCE = 50,
-        NB_VERRY_HIGH_OCCURENCE = 100,
-        BLOCKED_WORDS = [
-            'free helix',
-            '1246655',
-            '1251114',
-            '1251238'
-        ],
-        SAVE_URL_FROM = [
-        {
-            name: 'strawpoll',
-            checked: true
-        }, {
-            name: 'imgur',
-            checked: true
-        }, {
-            name: 'reddit',
-            checked: true
-        }
-        ];
+    var defaults = {
+            nb_links_max: 50,
+            nb_medium_occurence: 25,
+            nb_high_occurence: 50,
+            nb_verry_high_occurence: 100,
+            main_panel_max_height: 150,
+            main_panel_display: 'block',
+            blocked_words: [
+                'free helix',
+                '1246655',
+                '1251114',
+                '1251238'
+            ],
+            save_url_from: {
+                strawpoll: {
+                    checked: true
+                },
+                imgur: {
+                    checked: true
+                },
+                reddit: {
+                    checked: true
+                }
+            }
+        },
+
+        settings;
 
     // --- Helper functions ---
 
@@ -50,8 +57,10 @@
     }
 
     function isMessageSpam(message) {
-        for (var i = 0; i < BLOCKED_WORDS.length; i++) {
-            if (message.indexOf(BLOCKED_WORDS[i]) !== -1) {
+        var i;
+
+        for (i = 0; i < settings.blocked_words.length; i = i + 1) {
+            if (message.indexOf(settings.blocked_words[i]) !== -1) {
                 return true;
             }
         }
@@ -60,9 +69,7 @@
     }
 
     function getUrlForRegex() {
-        return SAVE_URL_FROM.map(function (savedUrl) {
-            return savedUrl.name;
-        }).join('|');
+        return Object.keys(settings.save_url_from).join('|');
     }
 
     function getMessageUrl(message) {
@@ -91,45 +98,84 @@
 
     function fixChatHeight() {
         chatPanel.style.bottom = mainPanel.clientHeight + 'px';
+        saveSettings();
     }
 
-    // Event Handlers
+    function extend(target, option) {
+        var copy,
+            name;
+
+        for (name in option) {
+            if (option.hasOwnProperty(name)) {
+                copy = option[name];
+
+                if (copy !== undefined) {
+                    target[name] = copy;
+                }
+            }
+        }
+
+        return target;
+    }
+
+    function saveSettings() {
+        localStorage.setItem('twitch-log-links.settings', JSON.stringify(settings));
+    }
+
+    function loadSettings() {
+        var options = JSON.parse(localStorage.getItem('twitch-log-links.settings')) || {};
+        settings = extend(defaults, options);
+    }
+
+    // --- Event handlers ---
 
     function toggleButtonClicked() {
-        mainPanel.style.display = (mainPanel.style.display !== 'none' ? 'none' : 'block');
+        settings.main_panel_display = mainPanel.style.display !== 'none' ? 'none' : 'block';
+        mainPanel.style.display = settings.main_panel_display;
+
         fixChatHeight();
     }
 
     function inputCheckboxesClicked(e) {
         var self = e.target;
+
         if (self && self.nodeName === 'INPUT') {
             containerLinks.classList.toggle('hide_' + self.dataset.source, !self.checked);
+            settings.save_url_from[self.dataset.source].checked = self.checked;
+
             fixChatHeight();
         }
     }
 
-    function resizeHandleMoved(e){
+    function resizeHandleMoved(e) {
         var newHeight = document.documentElement.clientHeight - e.clientY;
+
         e.preventDefault();
-        if(newHeight >= optionCheckboxes.clientHeight && e.clientY >= 161){
+        if (newHeight >= optionCheckboxes.clientHeight && e.clientY >= 161) {
+            settings.main_panel_max_height = newHeight;
             chatPanel.style.bottom = newHeight + 'px';
             containerLinks.style.height = newHeight - optionCheckboxes.clientHeight + 'px';
         }
     }
 
-    function resizeHandleDown(){
+    function resizeHandleDown() {
         if (containerLinks.style.maxHeight !== 'none') {
             containerLinks.style.maxHeight = 'none';
         }
-        
+
         document.addEventListener('mouseup', resizeHandleUp);
         document.addEventListener('mousemove', resizeHandleMoved);
     }
 
-    function resizeHandleUp(){
+    function resizeHandleUp() {
         document.removeEventListener('mousemove', resizeHandleMoved);
         document.removeEventListener('mouseup', resizeHandleUp);
+
+        saveSettings();
     }
+
+    // --- Load Settings ---
+    loadSettings();
 
     // --- UI ---
 
@@ -148,6 +194,7 @@
         inputCheckboxes = '',
         cssOption = [],
         cssLinks = [],
+        urlName,
         extraCss =
             '#tll-container-links li{background-color: #e3e3e3; margin-left: 20px; border-left: 1px solid rgba(0, 0, 0, 0.25); list-style-position: outside;}' +
             '#tll-container-links a{text-indent: 5px; max-width: 200px; text-overflow: ellipsis; display: inline-block; overflow: hidden; vertical-align: middle; white-space: nowrap;}' +
@@ -155,16 +202,18 @@
             '#tll-container-links:empty:after{content: "There\'s currently no saved link."; font-style: italic; color: #999}' +
             '#tll-resize-handle{position: absolute; width: 100%; height: 5px; cursor: ns-resize;}';
 
-    SAVE_URL_FROM.forEach(function (savedUrl) {
-        var checked = savedUrl.checked ? ' checked' : '';
+    for (urlName in settings.save_url_from) {
+        if (settings.save_url_from.hasOwnProperty(urlName)) {
+            var checked = settings.save_url_from[urlName].checked ? ' checked' : '';
 
-        cssLinks.push('#tll-container-links.hide_' + savedUrl.name + ' .tll-link-' + savedUrl.name);
-        inputCheckboxes += '<span style="margin-right: 10px;"><input data-source="' + savedUrl.name + '" type="checkbox" style="vertical-align: text-top;"' + checked + '> ' + savedUrl.name + '</span>';
+            cssLinks.push('#tll-container-links.hide_' + urlName + ' .tll-link-' + urlName);
+            inputCheckboxes += '<span style="margin-right: 10px;"><input data-source="' + urlName + '" type="checkbox" style="vertical-align: text-top;"' + checked + '> ' + urlName + '</span>';
 
-        if (!savedUrl.checked) {
-            cssOption.push('hide_' + savedUrl.name);
+            if (!settings.save_url_from[urlName].checked) {
+                cssOption.push('hide_' + urlName);
+            }
         }
-    });
+    }
 
     extraCss += cssLinks.join(', ') + '{display: none !important;}';
     addStyle(extraCss);
@@ -183,18 +232,18 @@
 
     // Create the option panel.
     optionCheckboxes.id = 'tll-options-checkboxes';
-    optionCheckboxes.style.cssText = 'color: #606161; background: #c9c9c9; padding: 10px; font-size: 10px; text-transform: uppercase; font-weight: bold;'
+    optionCheckboxes.style.cssText = 'color: #606161; background: #c9c9c9; padding: 10px; font-size: 10px; text-transform: uppercase; font-weight: bold;';
     optionCheckboxes.innerHTML = inputCheckboxes;
 
     // Create the links zone.
     containerLinks.id = 'tll-container-links';
     containerLinks.reversed = true;
-    containerLinks.style.cssText = 'max-height: 150px; overflow: hidden; overflow-y: scroll; list-style-type : decimal-leading-zero; padding-left: 10px; background-color: #dadada; color: #797979; font-size: 11px;';
+    containerLinks.style.cssText = 'max-height: ' + settings.main_panel_max_height + 'px; overflow: hidden; overflow-y: scroll; list-style-type : decimal-leading-zero; padding-left: 10px; background-color: #dadada; color: #797979; font-size: 11px;';
     containerLinks.className = cssOption.join(' ');
 
     // Create the main panel.
     mainPanel.id = 'tll-main-panel';
-    mainPanel.style.cssText = 'position: absolute; bottom: 0px; width: 100%;';
+    mainPanel.style.cssText = 'position: absolute; bottom: 0px; width: 100%; display: ' + settings.main_panel_display;
     mainPanel.appendChild(resizeHandle);
     mainPanel.appendChild(optionCheckboxes);
     mainPanel.appendChild(containerLinks);
@@ -209,7 +258,7 @@
     var links = {},
         originalAddMessage = Chat.addMessage;
 
-     Chat.addMessage = function (info) {
+    Chat.addMessage = function (info) {
         originalAddMessage.apply(this, arguments);
 
         // Check in each message if there's a link to keep.
@@ -221,7 +270,7 @@
                 baseUrl = getBaseUrl(url);
 
             // If the link is new, we add it to the list.
-            if (typeof links[baseUrl] === 'undefined') {
+            if (links[baseUrl] === undefined) {
                 var link = document.createElement('li');
                 link.className = 'tll-link-' + source;
                 link.innerHTML = '<a href="http://' + url + '" data-base-url="' + baseUrl + '" target="_blank">' + url + '</a><span></span>';
@@ -233,19 +282,24 @@
                 };
 
                 // We keep only a reasonnable number of links.
-                if (containerLinks.childElementCount === NB_LINKS_MAX) {
+                if (containerLinks.childElementCount === settings.nb_links_max) {
                     delete links[containerLinks.lastChild.querySelector('a').dataset.baseUrl];
                     containerLinks.removeChild(containerLinks.lastChild);
                 }
-            }
-            // Else, we just increment its number of occurences (and actualize the displayed url).
-            else {
-                links[baseUrl].nbOcc++;
+            } else {
+              // Else, we just increment its number of occurences (and actualize the displayed url).
+                links[baseUrl].nbOcc = links[baseUrl].nbOcc + 1;
 
-                switch (links[baseUrl].nbOcc){
-                    case NB_MEDIUM_OCCURENCE: links[baseUrl].style = '#2BA6EB'; break;
-                    case NB_HIGH_OCCURENCE: links[baseUrl].style = '#FF386F'; break;
-                    case NB_VERRY_HIGH_OCCURENCE: links[baseUrl].style = '#FFF; background-color: #50C700'; break;
+                switch (links[baseUrl].nbOcc) {
+                case settings.nb_medium_occurence:
+                    links[baseUrl].style = '#2BA6EB';
+                    break;
+                case settings.nb_high_occurence:
+                    links[baseUrl].style = '#FF386F';
+                    break;
+                case settings.nb_verry_high_occurence:
+                    links[baseUrl].style = '#FFF; background-color: #50C700';
+                    break;
                 }
 
                 links[baseUrl].link.innerHTML = '<a href="http://' + url + '" data-base-url="' + baseUrl + '" target="_blank">' + url + '</a> <span style="color: ' + links[baseUrl].style + '">' + links[baseUrl].nbOcc + '</span>';
